@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>malxchange — Live Demo Showcase</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Inter', -apple-system, 'Segoe UI', Roboto, sans-serif; background: #0e1a2e; color: #e8eef7; line-height: 1.6; }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 40px 20px; }
+  header { text-align: center; margin-bottom: 48px; }
+  header h1 { font-size: 42px; font-weight: 700; color: #f0a51e; margin-bottom: 8px; }
+  header p { color: #9db1d1; font-size: 18px; }
+  .links { display: flex; gap: 12px; justify-content: center; margin: 24px 0; flex-wrap: wrap; }
+  .links a { background: #f0a51e; color: #0e1a2e; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: 600; }
+  .links a.secondary { background: transparent; border: 1px solid #f0a51e; color: #f0a51e; }
+  section { margin-bottom: 48px; }
+  h2 { font-size: 28px; margin-bottom: 16px; color: #fff; border-bottom: 2px solid #f0a51e; padding-bottom: 8px; display: inline-block; }
+  p, li { color: #c4d2e8; margin-bottom: 12px; }
+  ul { padding-left: 24px; }
+  img.screenshot { width: 100%; border-radius: 8px; border: 1px solid #24344f; margin: 16px 0; }
+  video { width: 100%; border-radius: 8px; margin: 16px 0; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .card { background: #16263f; padding: 20px; border-radius: 8px; border: 1px solid #24344f; }
+  .card h3 { color: #f0a51e; margin-bottom: 8px; }
+  code { background: #1e2f4d; padding: 2px 6px; border-radius: 4px; font-size: 14px; }
+  footer { text-align: center; color: #6b7f9e; padding: 32px 0; border-top: 1px solid #24344f; margin-top: 48px; }
+  @media (max-width: 640px) { .grid { grid-template-columns: 1fr; } header h1 { font-size: 32px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>malxchange</h1>
+  <p>Live cryptocurrency exchange demo — deployed on a VPS with real simnet blockchains</p>
+  <div class="links">
+    <a href="https://exchange.arifin.uk">Live Member Site</a>
+    <a href="https://admin.exchange.arifin.uk" class="secondary">Admin Panel</a>
+    <a href="https://github.com/syaikhipin/malxchange" class="secondary">GitHub Repo</a>
+  </div>
+</header>
+
+<section>
+  <h2>What is this?</h2>
+  <p><strong>malxchange</strong> is an open-source cryptocurrency exchange (Go microservices + Nuxt 3 frontend) deployed live for evaluation. It runs:</p>
+  <ul>
+    <li>5 Go microservices (api, exchange, market, wallet, admin-api) + PostgreSQL + Redpanda/Kafka</li>
+    <li>Real <strong>Litecoin</strong> and <strong>Bitcoin</strong> simnet nodes — deposits are mined on actual (test) blockchains</li>
+    <li>Markets: <code>BTC/USDT</code>, <code>ETH/USDT</code>, <code>LTC/USDT</code>, <code>LTC/BTC</code></li>
+    <li>Full member flows: registration (email verification), login, deposits, trading, withdrawals</li>
+    <li>Admin panel with TOTP 2FA</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Homepage</h2>
+  <p>The rebranded member homepage with the new malxchange logo, clean Inter typography, and live market data.</p>
+  <img class="screenshot" src="assets/homepage.png" alt="malxchange homepage">
+</section>
+
+<section>
+  <h2>Why did it look like "BIZZAN BETA"?</h2>
+  <p>malxchange was ported from BIZZAN, an open-source exchange. The logo, orange-on-dark theme, and Chinese-priority fonts were inherited. We rebranded it to malxchange with modern typography.</p>
+  <video controls src="assets/explainer.mp4"></video>
+</section>
+
+<section>
+  <h2>Verified end-to-end flows</h2>
+  <div class="grid">
+    <div class="card">
+      <h3>LTC Deposit</h3>
+      <p>Requested a Litecoin address → mined 250 LTC on simnet → watcher detected it → credited after 6 confirmations.</p>
+    </div>
+    <div class="card">
+      <h3>BTC Deposit</h3>
+      <p>Same flow on Bitcoin simnet: 200 BTC mined, detected, and credited.</p>
+    </div>
+    <div class="card">
+      <h3>Real Trade</h3>
+      <p>demo1 sold 10 LTC @ 0.002 BTC on LTC/BTC. Matched, settled with 0.1% fees. Balances updated correctly on both sides.</p>
+    </div>
+    <div class="card">
+      <h3>Admin Security</h3>
+      <p>Bootstrap password rotated, TOTP 2FA enrolled and confirmed. Full admin panel access verified.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Bugs found &amp; fixed</h2>
+  <ul>
+    <li><strong>Wallet simnet blindness</strong> — the chain client silently fell back to mainnet address decoding when ltcd errored, so simnet deposits never matched. Fixed by passing the operator-configured network as default.</li>
+    <li><strong>Mailpit crash</strong> — <code>MP_SMTP_AUTH_ACCEPT_ANY=1</code> kills mailpit v1.21; removed.</li>
+    <li><strong>Trading page JS crash</strong> — <code>MARKETS_PATH</code> and <code>ORDERS_PATH</code> used but never declared.</li>
+    <li><strong>Dead nav links</strong> — Exchange went to a 404; Member center pointed to a non-existent page.</li>
+    <li><strong>BIZZAN rebrand</strong> — replaced logo images, fixed Chinese-aesthetic letter-spacing, switched to Inter font.</li>
+  </ul>
+  <p>All fixes are on the <code>fix/wallet-simnet-net-hint</code> branch.</p>
+</section>
+
+<section>
+  <h2>Try it</h2>
+  <p><strong>Dummy login:</strong><br>Email: <code>demo@arifin.uk</code><br>Password: <code>Demo1234!</code></p>
+  <p style="margin-top:12px">Or register your own account — email verification works via the built-in mail catcher.</p>
+</section>
+
+<footer>
+  <p>malxchange demo · Deployed October 2026 · <a href="https://github.com/syaikhipin/malxchange" style="color:#f0a51e">GitHub</a></p>
+</footer>
+
+</div>
+</body>
+</html>
