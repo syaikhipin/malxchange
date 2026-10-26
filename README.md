@@ -168,47 +168,6 @@ docker exec malxchange-postgres-1 psql -U malxchange -d malxchange \
 
 ---
 
-## Seeding Sample Data
-
-Populate the exchange with demo users, balances, and trading activity:
-
-```bash
-# On the VPS
-cd /root/malxchange
-./scripts/seed-demo.sh
-```
-
-This creates:
-- **5 demo traders** (`trader1@example.com` … `trader5@example.com`, password `Trader1123!` etc.)
-- Each funded with **10 BTC + 1,000,000 USDT**
-- Sample **deposit records**, **withdraw addresses**, and **favorites**
-- Places **matching orders** to generate trade history and chart data
-
-### Manual seeding (step by step)
-
-If you prefer to seed manually:
-
-```bash
-# 1. Create traders via the API
-for i in 1 2 3 4 5; do
-  curl -X POST https://yourdomain.com/api/uc/register/code \
-    -H "Content-Type: application/json" \
-    -d "{\"email\": \"trader$i@example.com\"}"
-  # ... enter code, set password
-done
-
-# 2. Fund via SQL (demo only — never in production!)
-docker exec malxchange-postgres-1 psql -U malxchange -d malxchange \
-  -c "INSERT INTO wallet.ledger_accounts (member_id, coin, available)
-      SELECT id, 'BTC', 10 FROM api.members WHERE email LIKE 'trader%@example.com'
-      ON CONFLICT DO NOTHING;"
-
-# 3. Place orders via the API to generate trades
-# (see scripts/seed-demo.sh for the full flow)
-```
-
----
-
 ## API Reference
 
 ### Public endpoints
