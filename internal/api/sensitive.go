@@ -775,7 +775,22 @@ func (g securityGate) VerifyAuthenticatorCode(ctx context.Context, memberID, cod
 	if err != nil {
 		return false, fmt.Errorf("api: gate authenticator secret: %w", err)
 	}
-	return auth.VerifyTOTP(secret, code, time.Now()), nil
+	step, ok := auth.VerifyTOTPStep(secret, code, time.Now())
+	if !ok {
+		return false, nil
+	}
+	// Advance the consumption marker monotonically: a code from an
+	// OLDER step than any already used is a replay after the window
+	// moved on and is refused; the same step's code verifies again —
+	// two legitimate actions inside one 30-second step present the same
+	// code (#103).
+	tag, err := g.pool.Exec(ctx,
+		`UPDATE authenticator_bindings SET last_used_step = $2 WHERE member_id = $1 AND last_used_step <= $2`,
+		memberID, int64(step))
+	if err != nil {
+		return false, fmt.Errorf("api: gate authenticator consume: %w", err)
+	}
+	return tag.RowsAffected() == 1, nil
 }
 
 // ---- admin internal RPCs ----

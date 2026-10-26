@@ -9,6 +9,7 @@
 package api
 
 import (
+	"context"
 	"encoding/base64"
 	"net/http"
 	"regexp"
@@ -204,6 +205,53 @@ func TestAuthenticatorBindUnbindAndGate(t *testing.T) {
 	}
 	if got := s.security(token)["authenticatorBound"]; got != false {
 		t.Fatalf("authenticatorBound after unbind = %v", got)
+	}
+}
+
+// TestWithdrawalRejectsReplayedTOTPCode pins the consuming withdrawal
+// gate (audit issue #103): the first verification of a code passes and
+// records the step; replaying the SAME code — still inside the +/-1
+// -step window — finds the step consumed and is refused. The gated
+// withdrawal endpoint is only wired with the stub gate in the funds IT
+// harness, so the production securityGate is exercised directly over
+// the real api schema and binding row.
+// TestWithdrawalGateTOTPReplayProtection pins the member gate's
+// monotonic consumption (#103): the same code verifies again while its
+// step is current, and a code from an older step than any already used
+// is refused. The window advance is simulated deterministically by
+// bumping the marker past the used step (no sleeps).
+func TestWithdrawalGateTOTPReplayProtection(t *testing.T) {
+	s := newStack(t)
+	email := "withdraw-gate@example.com"
+	token, memberID := s.register2(email, "the-password")
+	secret := s.bindAuthenticator(token, email)
+
+	gate := securityGate{pool: s.pool}
+	code, err := auth.TOTPCode(secret, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ok, err := gate.VerifyAuthenticatorCode(context.Background(), memberID, code)
+	if err != nil || !ok {
+		t.Fatalf("first verification: ok=%v err=%v, want true/nil", ok, err)
+	}
+
+	// Same step, same code: a second legitimate action — allowed.
+	ok, err = gate.VerifyAuthenticatorCode(context.Background(), memberID, code)
+	if err != nil || !ok {
+		t.Fatalf("same-step second verification: ok=%v err=%v, want true/nil", ok, err)
+	}
+
+	// The window slides past the used step: the same code is a replay
+	// of an older step and must be refused.
+	if _, err := s.pool.Exec(context.Background(),
+		`UPDATE authenticator_bindings SET last_used_step = last_used_step + 1 WHERE member_id = $1`, memberID); err != nil {
+		t.Fatal(err)
+	}
+	ok, err = gate.VerifyAuthenticatorCode(context.Background(), memberID, code)
+	if err != nil || ok {
+		t.Fatalf("older-step replayed verification: ok=%v err=%v, want false/nil", ok, err)
 	}
 }
 

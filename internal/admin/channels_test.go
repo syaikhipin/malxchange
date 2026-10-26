@@ -22,7 +22,9 @@ import (
 
 // newChannelTestServer wires a Server whose api dependency points at
 // the given stub URL, with no pool: the channel handlers never touch
-// the admin schema — channel state lives in api (ADR-0006).
+// the admin schema EXCEPT step-up consumption (#103), which is exactly
+// why the valid-code journey lives in channels_it_test.go (real pool)
+// and these unit tests pin the refusals and the fail-closed rule.
 func newChannelTestServer(apiBase string) *Server {
 	env := &AdminEnv{
 		SessionAbsolute: 12 * time.Hour,
@@ -136,22 +138,17 @@ func TestChannelActivateHandlerDemandsStepUp(t *testing.T) {
 		t.Fatalf("refused activations reached api %d times", calls)
 	}
 
-	// A fresh valid code passes the gate and reaches api.
-	code, err := auth.TOTPCode(secret, time.Now())
-	if err != nil {
-		t.Fatal(err)
-	}
-	status, raw = activate(`{"credentials":{"endpoint":"http://sms.local/send","apiKey":"k1"},"code":"` + code + `"}`)
-	if status != http.StatusNoContent {
-		t.Fatalf("valid step-up: %d %s", status, raw)
-	}
-	if calls != 1 {
-		t.Fatalf("api calls = %d, want 1", calls)
-	}
+	// The valid-code path now records consumption before reaching api
+	// (#103), so it needs a real pool: the journey lives in
+	// channels_it_test.go (TestChannelActivateForwardsCredentialsAndAudits),
+	// and the no-storage fail-closed rule in
+	// TestChannelActivateFailsClosedWithoutStorage below.
 }
 
-func TestChannelActivateHandlerSurfacesAPIRefusal(t *testing.T) {
+func TestChannelActivateFailsClosedWithoutStorage(t *testing.T) {
+	var calls int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/channels/sms/activate":
@@ -185,16 +182,16 @@ func TestChannelActivateHandlerSurfacesAPIRefusal(t *testing.T) {
 		return rec.Code, rec.Body.String()
 	}
 
-	// api's per-driver refusal passes through with its status and
-	// sentence — that sentence is what the operator tunes the form by.
+	// Step-up consumption (#103) needs storage: even a valid code must
+	// refuse when the step cannot be recorded (fail closed), and the
+	// api is never reached. The upstream-refusal passthrough this test
+	// used to pin needs the real pool and lives in channels_it_test.go
+	// (TestChannelActivateSurfacesAPIRefusal).
 	status, raw := call("sms", `{"credentials":{"apiKey":"k1"},"code":"`+code+`"}`)
-	if status != http.StatusBadRequest || !strings.Contains(raw, "channel sms needs credentials endpoint and apiKey") {
-		t.Fatalf("driver refusal: %d %s", status, raw)
+	if status != http.StatusUnauthorized || !strings.Contains(raw, errStepUpInvalid) {
+		t.Fatalf("fail-closed step-up: %d %s", status, raw)
 	}
-
-	// An unknown channel keeps its 404.
-	status, raw = call("pigeon", `{"credentials":{},"code":"`+code+`"}`)
-	if status != http.StatusNotFound || !strings.Contains(raw, "pigeon") {
-		t.Fatalf("unknown channel: %d %s", status, raw)
+	if calls != 0 {
+		t.Fatalf("activation reached api %d times without storage", calls)
 	}
 }

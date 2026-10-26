@@ -71,6 +71,26 @@ func VerifyTOTP(secret, code string, now time.Time) bool {
 	return false
 }
 
+// VerifyTOTPStep verifies like VerifyTOTP and returns the step counter
+// of the window slot that matched, so callers can persist it and reject
+// replays of the same step (consumption). ok is false when no window
+// code matches.
+func VerifyTOTPStep(secret, code string, now time.Time) (step uint64, ok bool) {
+	if len(code) != totpDigits {
+		return 0, false
+	}
+	for _, delta := range []time.Duration{-totpStep, 0, totpStep} {
+		want, err := TOTPCode(secret, now.Add(delta))
+		if err != nil {
+			return 0, false
+		}
+		if subtle.ConstantTimeCompare([]byte(want), []byte(code)) == 1 {
+			return uint64(now.Add(delta).Unix()) / uint64(totpStep.Seconds()), true
+		}
+	}
+	return 0, false
+}
+
 // OTPAuthURI renders the provisioning URI authenticator apps scan. The
 // label carries the account's email so the account is recognizable in
 // the app; the issuer pins the service name.

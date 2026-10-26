@@ -595,11 +595,54 @@ func TestLoginRequiresTOTPAndLocksAfterFiveFailures(t *testing.T) {
 
 	// The lock lifts when the window slides out (test window 1.5s).
 	time.Sleep(s.env.LockoutWindow + 300*time.Millisecond)
+	good, err = totpNow(p.TOTPSecr)
+	if err != nil {
+		t.Fatal(err)
+	}
 	status, resp, raw = p.login(t, s, good)
 	if status != http.StatusOK {
 		t.Fatalf("login after lock window: %d %s", status, raw)
 	}
 	_ = sessionCookieOf(t, resp)
+}
+
+// TestEmployeeLoginConsumesTOTPStep pins login code consumption (audit
+// issue #103): the first login with a code passes, logging in again
+// TestEmployeeLoginTOTPReplayProtection pins the monotonic consumption
+// semantics (#103): the same code verifies again while its step is
+// current (two legitimate actions inside one 30-second step present the
+// same code), and a code from an older step than any already used is a
+// replay after the window moved on — refused exactly like a wrong code.
+// The window advance is simulated deterministically by bumping the
+// marker past the used step (no sleeps).
+func TestEmployeeLoginTOTPReplayProtection(t *testing.T) {
+	s := newStack(t)
+	p := s.fullyProvisioned(t, "replay@it.test")
+
+	code, err := totpNow(p.TOTPSecr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	status, resp, raw := p.login(t, s, code)
+	if status != http.StatusOK {
+		t.Fatalf("first login with code: %d %s", status, raw)
+	}
+	_ = sessionCookieOf(t, resp)
+
+	// Same step, same code: a second legitimate action — allowed.
+	if status, _, raw := p.login(t, s, code); status != http.StatusOK {
+		t.Fatalf("same-step second login: %d %s, want 200", status, raw)
+	}
+
+	// The window slides past the used step: the same code is now a
+	// replay of an older step and must be refused.
+	if _, err := s.pool.Exec(context.Background(),
+		`UPDATE employees SET last_used_step = last_used_step + 1 WHERE email = $1`, p.Email); err != nil {
+		t.Fatal(err)
+	}
+	if status, _, raw := p.login(t, s, code); status != http.StatusUnauthorized {
+		t.Fatalf("older-step replayed code login: %d %s, want 401", status, raw)
+	}
 }
 
 func TestSessionExpiresIdleAndAbsolute(t *testing.T) {
@@ -628,6 +671,10 @@ func TestSessionExpiresIdleAndAbsolute(t *testing.T) {
 
 	// A fresh login still works (the shift expired the session, not the
 	// surface).
+	good, err = totpNow(p.TOTPSecr)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if status, _, _ := p.login(t, s, good); status != http.StatusOK {
 		t.Fatalf("login after expiry test: %d", status)
 	}

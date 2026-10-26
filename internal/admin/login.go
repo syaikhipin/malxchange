@@ -122,7 +122,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 			WriteError(w, http.StatusUnauthorized, "Your authenticator code is required.")
 			return
 		}
-		if !auth.VerifyTOTP(emp.TOTPSecret, req.Code, time.Now()) {
+		if step, ok := auth.VerifyTOTPStep(emp.TOTPSecret, req.Code, time.Now()); !ok || !s.consumeTOTPStep(r.Context(), emp.ID, step) {
 			if err := auth.RecordLoginFailure(r.Context(), s.pool, email); err != nil {
 				writeErr(w, s.log, err)
 				return
