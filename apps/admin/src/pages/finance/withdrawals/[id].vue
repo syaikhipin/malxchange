@@ -103,7 +103,7 @@
 // decisions — approve / reject from audit, retry / refund from failed.
 // Approve and retry demand Step-up (ADR-0012); every decision is
 // audit-logged server-side with the acting Employee as the actor.
-definePageMeta({ middleware: 'employee' })
+definePageMeta({ middleware: 'employee', props: true })
 
 const props = defineProps<{ id: string }>()
 

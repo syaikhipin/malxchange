@@ -101,7 +101,7 @@
 // the support lock/unlock actions and the compliance Authenticator
 // reset (Step-up-gated; api refuses anything but KYC-verified members
 // and notifies the member's active Code channels).
-definePageMeta({ middleware: 'employee' })
+definePageMeta({ middleware: 'employee', props: true })
 
 const props = defineProps<{ id: string }>()
 
