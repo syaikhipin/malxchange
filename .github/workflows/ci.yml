@@ -115,3 +115,28 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Admin E2E over the compose stack (fresh database every run)
         run: make admin-e2e
+
+  # Member E2E (spec #24, issue #51): the web journeys (register to
+  # withdraw, WebSocket protocol authz, decimal exactness, lockout,
+  # session revocation, market switching) through the Caddy edge over
+  # the compose test+e2e profiles — the same shape as admin-e2e. This
+  # suite is the member surface's only browser coverage; wiring it to
+  # CI is audit issue #98 (it existed as `make member-e2e` but never
+  # ran anywhere).
+  member-e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: apps/web/.nvmrc
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - name: Env file and Playwright browser
+        run: |
+          sed -e "s/replace-me/$(openssl rand -hex 16)/g" deploy/env.example > deploy/.env
+          cd apps/web
+          npm ci
+          npx playwright install --with-deps chromium
+      - name: Member E2E over the compose stack
+        run: make member-e2e
