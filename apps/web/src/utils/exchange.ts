@@ -35,6 +35,24 @@ export interface Depth {
   asks: BookLevel[]
 }
 
+// A market.plate publish carries only the sides that changed in the
+// engine batch: a side present as an empty array clears that side, a
+// side present as null keeps the last-known levels — the same
+// keep/clear contract the market projector applies, so a fully swept
+// side clears in the UI instead of leaving phantom levels (audit
+// issue #79).
+export function mergeDepth(
+  prev: Depth | null,
+  plate: { market: string; bids: BookLevel[] | null; asks: BookLevel[] | null },
+): Depth {
+  const prevSides = prev ?? { market: plate.market, bids: [], asks: [] }
+  return {
+    market: plate.market || prevSides.market,
+    bids: plate.bids ?? prevSides.bids,
+    asks: plate.asks ?? prevSides.asks,
+  }
+}
+
 export interface PublicTrade {
   id: string
   price: string

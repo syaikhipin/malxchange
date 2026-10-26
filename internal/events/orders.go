@@ -69,11 +69,16 @@ type PlateLevel struct {
 }
 
 // Plate is the Depth snapshot on TopicMarketPlate: whichever sides changed
-// in the batch (engine publishes at most once per batch per side).
+// in the batch (engine publishes at most once per batch per side). The
+// sides deliberately keep omitempty OFF: a dirty-but-empty side serializes
+// as [] (the consumer clears that side's Depth), an unchanged side stays
+// nil and serializes as null (the consumer keeps its last-known levels) —
+// absent and empty are different wire shapes and must stay distinguishable
+// (audit issue #79).
 type Plate struct {
 	Market string       `json:"market"`
-	Bids   []PlateLevel `json:"bids,omitempty"` // best first
-	Asks   []PlateLevel `json:"asks,omitempty"` // best first
+	Bids   []PlateLevel `json:"bids"` // best first
+	Asks   []PlateLevel `json:"asks"` // best first
 }
 
 // RawMessage helpers keep the producers one-liners.

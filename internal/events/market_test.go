@@ -1,6 +1,8 @@
 package events
 
 import (
+	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 )
@@ -61,5 +63,39 @@ func TestMarketUpdatedPayloadDecimalStrings(t *testing.T) {
 		`"sort":0,"zone":"","featured":false}`
 	if string(raw) != want {
 		t.Errorf("nil-cap payload = %s\nwant            %s", raw, want)
+	}
+}
+
+// TestPlateWireShapeDistinguishesEmptyFromUnchanged pins the Depth
+// keep/clear wire contract: a dirty-but-empty side serializes as []
+// (consumers clear that side) and an untouched side as null (consumers
+// keep their last-known levels). While the sides carried omitempty the
+// two shapes were indistinguishable — a fully swept side could never
+// clear published Depth (audit issue #79).
+func TestPlateWireShapeDistinguishesEmptyFromUnchanged(t *testing.T) {
+	cleared := Plate{Market: "BTC/USDT", Bids: []PlateLevel{}}
+	raw, err := json.Marshal(cleared)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(raw), `"bids":[]`) {
+		t.Fatalf("emptied side must serialize as []: %s", raw)
+	}
+
+	untouched := Plate{Market: "BTC/USDT"}
+	raw, err = json.Marshal(untouched)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(raw), `"bids":null`) || !strings.Contains(string(raw), `"asks":null`) {
+		t.Fatalf("untouched sides must serialize as null: %s", raw)
+	}
+
+	var back Plate
+	if err := json.Unmarshal(raw, &back); err != nil || back.Bids != nil || back.Asks != nil {
+		t.Fatalf("null sides must decode to nil (keep): %+v err=%v", back, err)
+	}
+	if err := json.Unmarshal([]byte(`{"market":"BTC/USDT","bids":[]}`), &back); err != nil || back.Bids == nil || len(back.Bids) != 0 {
+		t.Fatalf("empty-array side must decode to non-nil empty (clear): %+v err=%v", back, err)
 	}
 }

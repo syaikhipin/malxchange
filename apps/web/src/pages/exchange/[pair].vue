@@ -251,6 +251,7 @@ import {
   orderErrorMessage,
   marketRouteSlug,
   marketFromRouteSlug,
+  mergeDepth,
   type BookLevel,
   type Depth,
   type KlineBar,
@@ -564,7 +565,10 @@ function applyEnvelope(envelope: SocketEnvelope): void {
     return
   }
   if (envelope.channel === `depth.${market}`) {
-    depth.value = data as unknown as Depth
+    depth.value = mergeDepth(
+      depth.value,
+      data as { market: string; bids: BookLevel[] | null; asks: BookLevel[] | null },
+    )
     return
   }
   if (envelope.channel === `trades.${market}`) {

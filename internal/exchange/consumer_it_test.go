@@ -14,6 +14,7 @@ import (
 	"log/slog"
 	"net/url"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -296,6 +297,45 @@ func TestFoldPersistsAndPublishes(t *testing.T) {
 	_ = s.pool.QueryRow(context.Background(), `SELECT status FROM orders WHERE id='m1'`).Scan(&m1status)
 	if m1status != "open" {
 		t.Errorf("m1 status = %s, want open (partial)", m1status)
+	}
+}
+
+// TestSweptSidePublishesEmptyPlate: a fully-consumed Book side must
+// publish as a present-but-empty side on market.plate ("bids":[]), the
+// wire shape consumers need to clear that side's Depth. While the sides
+// carried omitempty the shape was deleted from the event, so stale
+// phantom levels survived every publish forever (audit issue #79).
+func TestSweptSidePublishesEmptyPlate(t *testing.T) {
+	s := newStack(t)
+	s.newConsumer("sweep-1")
+	// bob's crossing limit sell fully consumes alice's bid; the batch
+	// ends with the bids side empty and the asks side never touched.
+	s.produce(
+		placeCmd("b1", "alice", "buy", "limit", "50000", "0.5"),
+		placeCmd("t1", "bob", "sell", "limit", "49999", "0.5"),
+	)
+	s.drain(t)
+
+	var filled string
+	if err := s.pool.QueryRow(context.Background(),
+		`SELECT status FROM orders WHERE id='b1'`).Scan(&filled); err != nil {
+		t.Fatal(err)
+	}
+	if filled != "filled" {
+		t.Fatalf("b1 status = %s, want filled (the sweep premise)", filled)
+	}
+
+	var payload string
+	if err := s.pool.QueryRow(context.Background(),
+		`SELECT payload FROM outbox WHERE topic=$1 ORDER BY created_at DESC, id DESC LIMIT 1`,
+		events.TopicMarketPlate).Scan(&payload); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(payload, `"bids":[]`) {
+		t.Errorf("last market.plate payload lacks the emptied bids side:\n%s", payload)
+	}
+	if !strings.Contains(payload, `"asks":null`) {
+		t.Errorf("last market.plate payload should carry the untouched asks side as null:\n%s", payload)
 	}
 }
 
