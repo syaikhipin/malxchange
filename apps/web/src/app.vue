@@ -1,6 +1,10 @@
 <template>
   <NuxtLayout>
-    <NuxtPage />
+    <!-- :page-key remounts param routes when the param changes, so
+         pages like /exchange/:pair resolve the new market fresh on
+         mount instead of silently keeping the old one's data (audit
+         issue #97). -->
+    <NuxtPage :page-key="$route.fullPath" />
   </NuxtLayout>
 </template>
 
