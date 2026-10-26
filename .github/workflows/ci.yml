@@ -115,3 +115,29 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Admin E2E over the compose stack (fresh database every run)
         run: make admin-e2e
+
+  # Security scanning (audit issue #92): govulncheck fails the build on
+  # vulnerabilities reachable from this module's own call graph; trivy
+  # fails on CRITICAL/HIGH fixable findings in the dependency/config
+  # tree. Unfixed-elsewhere findings stay visible in the report but do
+  # not gate (nothing to fix by bumping; track them in issues instead).
+  govulncheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Reachable vulnerabilities fail the build
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck ./...
+
+  trivy-fs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Dependency and config scan (CRITICAL/HIGH fail)
+        run: |
+          docker run --rm -v "$PWD:/repo" aquasec/trivy:0.76.1 fs \
+            --severity CRITICAL,HIGH --ignore-unfixed --exit-code 1 /repo
