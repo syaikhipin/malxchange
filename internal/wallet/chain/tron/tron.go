@@ -130,6 +130,9 @@ func (c *Client) ScanBlock(ctx context.Context, height int64, watch map[string]s
 					continue
 				}
 				to := common.EncodeCheck(tc.GetToAddress())
+				if tc.GetAmount() <= 0 {
+					continue // defense in depth: a Deposit needs amount > 0 (audit issue #81)
+				}
 				if _, ok := watch[to]; ok {
 					deps = append(deps, chain.Deposit{
 						TxID:    txid,
@@ -385,6 +388,12 @@ func parseTRC20Transfer(data []byte) (string, decimal.Decimal, bool) {
 	to = append(to, 0x41)
 	to = append(to, data[16:36]...) // right-aligned 20-byte address
 	amount := new(big.Int).SetBytes(data[36:68])
+	if amount.Sign() <= 0 {
+		// Zero-value TRC-20 transfers are a cheap spam vector aimed at
+		// watched deposit addresses; the deposits CHECK (amount > 0)
+		// would wedge the watcher on the block forever (audit issue #81).
+		return "", decimal.Zero, false
+	}
 	return common.EncodeCheck(to), decimal.NewFromBigInt(amount, 0), true
 }
 

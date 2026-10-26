@@ -234,11 +234,20 @@ func parseTransferLog(lg types.Log, watch map[string]string, dp int32, height in
 	if !ok {
 		return chain.Deposit{}, false
 	}
+	amt := new(big.Int).SetBytes(lg.Data)
+	if amt.Sign() <= 0 {
+		// A zero-value Transfer can be sent by anyone to any address.
+		// Recorded, it would violate the deposits CHECK (amount > 0),
+		// fail the watcher's transaction before the cursor saves, and
+		// re-scan the same block forever — wedging credits for every
+		// member of this Coin (audit issue #81).
+		return chain.Deposit{}, false
+	}
 	return chain.Deposit{
 		TxID:    lg.TxHash.Hex(),
 		Vout:    int32(lg.Index),
 		Address: addr,
-		Amount:  decimal.NewFromBigInt(new(big.Int).SetBytes(lg.Data), -dp),
+		Amount:  decimal.NewFromBigInt(amt, -dp),
 		Height:  height,
 	}, true
 }

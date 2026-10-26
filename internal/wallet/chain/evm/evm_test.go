@@ -106,3 +106,27 @@ func TestAddressNormalization(t *testing.T) {
 		t.Error("checksummed watch key did not match normalized topic address")
 	}
 }
+
+func TestParseTransferLogSkipsZeroAmount(t *testing.T) {
+	// A zero-value ERC-20 Transfer sent to a watched address must be
+	// skipped, not recorded: the deposits CHECK (amount > 0) would fail
+	// the watcher's transaction before the cursor saves and wedge it on
+	// the same block forever (audit issue #81).
+	addr := common.HexToAddress("0x1111111111111111111111111111111111111111")
+	watch := map[string]string{normalizeLower(addr.String()): "member-1"}
+	topics := []common.Hash{transferTopic, common.Hash{}, common.BytesToHash(addr.Bytes())}
+
+	zero := types.Log{Topics: topics, Data: make([]byte, 32)}
+	if _, hit := parseTransferLog(zero, watch, 6, 10); hit {
+		t.Fatal("zero-value Transfer log must be skipped")
+	}
+
+	one := types.Log{Topics: topics, Data: append(make([]byte, 31), 1)}
+	d, hit := parseTransferLog(one, watch, 6, 10)
+	if !hit {
+		t.Fatal("positive Transfer log must parse")
+	}
+	if want := decimal.New(1, -6); !d.Amount.Equal(want) {
+		t.Fatalf("amount = %s, want %s", d.Amount, want)
+	}
+}

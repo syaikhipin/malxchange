@@ -277,3 +277,24 @@ func TestAdminHTTP(t *testing.T) {
 func httpPost(url, body string) (*http.Response, error) {
 	return http.Post(url, "application/json", strings.NewReader(body))
 }
+
+func TestParseTRC20TransferSkipsZeroAmount(t *testing.T) {
+	// A zero-value TRC-20 transfer aimed at a watched address must not
+	// decode into a Deposit: the deposits CHECK (amount > 0) would wedge
+	// the watcher on the block forever (audit issue #81).
+	data := make([]byte, 68)
+	copy(data, trc20TransferMethod)
+
+	if _, _, ok := parseTRC20Transfer(data); ok {
+		t.Fatal("zero-value TRC-20 transfer must be rejected")
+	}
+
+	data[67] = 1
+	to, amt, ok := parseTRC20Transfer(data)
+	if !ok {
+		t.Fatal("positive TRC-20 transfer must parse")
+	}
+	if to == "" || !amt.Equal(decimal.NewFromInt(1)) {
+		t.Fatalf("to = %q, amount = %s, want a non-empty address and 1", to, amt)
+	}
+}
