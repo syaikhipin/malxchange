@@ -27,7 +27,7 @@ Everything runs on a single Hetzner VPS (CX22: 2 vCPU, 4GB RAM, 40GB disk).
 │                             └────────┘  │
 │  ┌──────────┐  ┌──────────┐             │
 │  │  ltcd    │  │  btcd    │             │
-│  │ (simnet) │  │ (simnet) │             │
+│  │ (mainnet)│  │ (mainnet)│             │
 │  └──────────┘  └──────────┘             │
 └─────────────────────────────────────────┘
 ```
@@ -38,7 +38,7 @@ Everything runs on a single Hetzner VPS (CX22: 2 vCPU, 4GB RAM, 40GB disk).
 |--------------------|--------|
 | 5 Go microservices | ~80 MB |
 | Postgres 17        | ~250 MB|
-| Redpanda           | ~400 MB|
+| Redpanda           | ~400 MB typical (capped at 1 GB)|
 | ltcd + btcd        | ~170 MB|
 | Nuxt web + admin   | ~150 MB|
 | Caddy + misc       | ~50 MB |
@@ -62,7 +62,7 @@ Comfortably fits in 4GB with headroom for spikes.
 ```bash
 # On the VPS
 cd /root/malxchange/deploy
-docker compose -f docker-compose.yaml -f compose.demo-ltcd.yaml --profile chains up -d
+docker compose -f docker-compose.yaml up -d        # add --profile chains for in-compose nodes
 ```
 
 ---
@@ -97,7 +97,7 @@ Current production setup: frontend on Vercel, data on Aiven, backend on VPS.
 │                └──────────────────────┘ │
 │  ┌──────────┐  ┌──────────┐             │
 │  │  ltcd    │  │  btcd    │             │
-│  │ (simnet) │  │ (simnet) │             │
+│  │ (mainnet)│  │ (mainnet)│             │
 │  └──────────┘  └──────────┘             │
 └─────────────────────────────────────────┘
 ```
@@ -139,7 +139,7 @@ Current production setup: frontend on Vercel, data on Aiven, backend on VPS.
 # 3. On the VPS: update deploy/.env with Aiven credentials
 #    and docker-compose.yaml with Aiven hosts, then:
 cd /root/malxchange/deploy
-docker compose -f docker-compose.yaml -f compose.demo-ltcd.yaml --profile chains up -d
+docker compose -f docker-compose.yaml up -d
 ```
 
 ---

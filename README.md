@@ -3,7 +3,7 @@
 An open-source crypto exchange platform designed for **low-resource environments**. Run a full-featured spot exchange — matching engine, wallets, admin panel — on a single **4GB VPS** for ~€4/month.
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Go](https://img.shields.io/badge/go-1.21+-00ADD8.svg)
+![Go](https://img.shields.io/badge/go-1.26+-00ADD8.svg)
 ![Nuxt](https://img.shields.io/badge/nuxt-3-00DC82.svg)
 ![Postgres](https://img.shields.io/badge/postgres-17-336791.svg)
 
@@ -35,7 +35,7 @@ An open-source crypto exchange platform designed for **low-resource environments
 - **Content** — announcements, help articles & categories
 - **System** — employee accounts, roles & permissions
 - **Audit log** — every admin action tracked
-- **TOTP 2FA** — hardware-grade admin security (see setup below)
+- **TOTP authenticator** — hardware-grade admin security (see setup below)
 
 ### Security
 - Email verification for registration
@@ -75,7 +75,7 @@ An open-source crypto exchange platform designed for **low-resource environments
 | `web` | Member frontend (Nuxt 3) | ~75 MB |
 | `admin` | Admin frontend (Nuxt SSR) | ~70 MB |
 | `postgres` | PostgreSQL 17 (5 schemas) | ~250 MB |
-| `redpanda` | Kafka-compatible event bus | ~400 MB |
+| `redpanda` | Kafka-compatible event bus | ~400 MB typical (capped at 1 GB) |
 
 **Total: ~1.1 GB** — fits comfortably on a 4GB VPS.
 
@@ -98,8 +98,10 @@ cd malxchange
 
 ### 2. Configure
 ```bash
-cp deploy/.env.example deploy/.env
-# Edit deploy/.env — set passwords and domains
+cp deploy/env.example deploy/.env
+# Edit deploy/.env — set passwords and domains.
+# Better: run install/install.sh — it generates every secret, boots the
+# stack, and bootstraps the first Employee (see install/README.md).
 ```
 
 Required variables:
@@ -116,10 +118,10 @@ MAL_ADMIN_BOOTSTRAP_EMAIL=admin@yourdomain.com
 ### 3. Launch
 ```bash
 cd deploy
-docker compose -f docker-compose.yaml -f compose.demo-ltcd.yaml --profile chains up -d
+docker compose -f docker-compose.yaml up -d
 ```
 
-This starts everything: Postgres, Redpanda, 5 Go services, both frontends, Caddy, and simnet chain nodes (ltcd/btcd for testing deposits).
+This starts everything: Postgres, Redpanda, the 5 Go services, both frontends (member web + admin), and Caddy. Chain nodes are opt-in: `--profile chains` adds in-compose btcd/ltcd (mainnet by default — the sync wants 100GB+ of disk, which the installer's preflight checks), or point `MAL_BTCD_URL`/`MAL_LTCD_URL` at external nodes; without either, the wallet runs watch-only until configured.
 
 ### 4. Access
 - **Member**: https://yourdomain.com
@@ -216,7 +218,7 @@ docker exec malxchange-postgres-1 psql -U malxchange -d malxchange \
 GET  /api/market/tickers          # All market tickers
 GET  /api/market/depth/{pair}     # Order book depth
 GET  /api/market/trades/{pair}    # Recent trades
-GET  /api/market/candles/{pair}   # OHLC candles
+GET  /api/market/kline/{market}    # Kline history (OHLCV bars)
 ```
 
 ### Authenticated endpoints
@@ -269,7 +271,7 @@ Everything on a single Hetzner CX22 (4GB RAM). The full stack uses ~1.1GB:
   - `NUXT_PUBLIC_API_BASE_URL=https://your-api-domain/api`
   - `NUXT_PUBLIC_WS_URL=wss://your-api-domain/ws`
   - `NUXT_PUBLIC_ADMIN_API_BASE_URL=https://your-admin-api-domain/api`
-- **PostgreSQL → Free tier:** Neon (free 512MB), Supabase (free 500MB), or Aiven free trial. Set `MAL_PG_HOST`, `MAL_PG_SSLMODE=require`.
+- **PostgreSQL → Free tier:** Neon (free 512MB), Supabase (free 500MB), or Aiven free trial. Set `MAL_PG_HOST`. (TLS to managed Postgres is not supported yet — tracked in the issue tracker; keep the database reachable over a private network until it lands.)
 - **Kafka → Free tier:** Upstash Kafka (free 10k msgs/day) or Aiven free trial. Or self-host Redpanda on the VPS.
 - **Backend → VPS (€4/mo):** 5 Go services + Caddy + chain nodes only.
 

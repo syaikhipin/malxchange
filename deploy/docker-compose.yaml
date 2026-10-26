@@ -351,11 +351,23 @@ services:
     volumes:
       - ltcd_data:/root/.ltcd
 
-  # The member web SSR container still lands with issue #24:
-  #
-  # web:
-  #   build: { context: ../apps/web }   # issue #24
-  #   restart: unless-stopped
+  # The member web SSR container (the issue #24 port; the Caddyfile has
+  # proxied web:3000 since the edge was wired). Public origins point at
+  # the Caddy edge so the browser is same-origin with /api and /ws;
+  # SSR reaches api over the compose network directly.
+  web:
+    build:
+      context: ../apps/web
+      dockerfile: Dockerfile
+    image: malxchange/web:latest
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      NUXT_API_BASE_URL: http://api:8080/api
+      NUXT_PUBLIC_API_BASE_URL: https://${MAL_DOMAIN:-exchange.example.com}/api
+      NUXT_PUBLIC_WS_URL: wss://${MAL_DOMAIN:-exchange.example.com}/ws
 
 volumes:
   postgres_data:
