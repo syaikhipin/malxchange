@@ -70,7 +70,7 @@ _Avoid_: candle, candlestick, OHLCV bar
 
 **Warmup**:
 The period after engine start during which a Market's Book is being rebuilt; commands wait and drain once the Market is Ready.
-_Avoid_: boot, initialization, recovery
+_Avoid_: boot, initialization (the rebuild act itself is _recovery_ per ADR-0010; Warmup names only the period it happens in)
 
 **Ready**:
 A Market state where the Book is rebuilt and commands are being consumed; engine-internal, with no admin toggle.
@@ -143,3 +143,31 @@ _Avoid_: re-auth, second password, 2FA prompt
 **Audit log**:
 The append-only record of every admin mutation and authentication event — actor, action, target, before/after, origin IP — written by middleware, never by individual handlers.
 _Avoid_: access log, operation log, admin log
+
+**Order intent**:
+The api-side record of a member's placement, gate-inserted before the order command exists; the idempotety seam that makes duplicate submissions and producer races safe.
+_Avoid_: pending order, pre-order
+
+**Favorites**:
+A member's pinned Markets, kept per member and served to the watchlist on the trading page.
+_Avoid_: follows, starred markets
+
+**Withdrawal address book**:
+The member-managed list of saved withdrawal destinations per Coin.
+_Avoid_: whitelist, payee list
+
+**Session**:
+An authenticated device's opaque token row: member sessions slide seven days from last use; Employee sessions cap at twelve hours absolute plus thirty minutes idle, and revocation kills the row, not the cookie.
+_Avoid_: JWT, login state
+
+**Keystore**:
+The encrypted hot-wallet key file (argon2id + XChaCha20-Poly1305), created offline by walletctl during the key ceremony and decrypted only inside the signer's memory.
+_Avoid_: wallet file, key file
+
+**Break-glass**:
+The host-side CLI that recovers a locked-out sole super-admin; its actions are audited as a system actor inside the same transaction as the change.
+_Avoid_: backdoor, emergency access
+
+**Incident**:
+A Wallet Ops record of a custody anomaly — a reorg eviction, a failed broadcast, a deep-reorg invalidation — awaiting operator adjudication.
+_Avoid_: alert, ticket

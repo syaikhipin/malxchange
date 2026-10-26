@@ -161,6 +161,8 @@ lint:
 		echo "apps/web hardcodes the /api prefix — useApi's base URL already carries it, so the fetch 404s on /api/api (docs/agents/review-checklist.md):"; echo "$$hits"; exit 1; fi
 	@hits=$$(grep -rn "memberCall(" apps/admin/e2e 2>/dev/null | grep "'/api/"); if [ -n "$$hits" ]; then \
 		echo "admin e2e memberCall paths carry /api — MEMBER_API already ends in it, so the request hits /api/api (docs/agents/review-checklist.md):"; echo "$$hits"; exit 1; fi
+	@hits=$$(grep -n "healthz" deploy/docker-compose.yaml deploy/compose.test.yaml 2>/dev/null | grep -v readyz); if [ -n "$$hits" ]; then \
+		echo "compose healthchecks must probe /readyz, never /healthz — liveness answers OK unconditionally (docs/agents/review-checklist.md):"; echo "$$hits"; exit 1; fi
 	@if ! out=$$(cd deploy && docker compose -f docker-compose.yaml config -q 2>&1 && docker compose -f docker-compose.yaml -f compose.test.yaml config -q 2>&1); then \
 		echo "compose overlay invalid — a broken compose file blocks every make target that boots the stack:"; echo "$$out"; exit 1; fi
 

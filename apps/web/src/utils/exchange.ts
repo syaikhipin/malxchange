@@ -96,11 +96,11 @@ export function marketName(base: string, quote: string): string {
 
 /**
  * Resolves the /exchange/:pair route value against the market list.
- * The route keeps the legacy URL vocabulary (`base_quote`, and the
- * squashed `basequote` form legacy links used) — GLOSSARY's "pair"
- * ban covers new identifiers, not this pinned wire path — and a
- * renamed or delisted Market degrades to the first listed one instead
- * of a dead page.
+ * ADR-0003 waiver — the route keeps the legacy URL vocabulary
+ * (`base_quote`, and the squashed `basequote` form legacy links used);
+ * GLOSSARY's "pair" ban covers new identifiers, not this pinned wire
+ * path. A renamed or delisted Market degrades to the first listed one
+ * instead of a dead page.
  */
 export function marketFromRouteSlug(slug: string, markets: MarketInfo[]): MarketInfo | undefined {
   const normalized = slug.trim().toLowerCase()

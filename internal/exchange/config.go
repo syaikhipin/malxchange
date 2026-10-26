@@ -17,7 +17,9 @@ import (
 // MarketCfg is a markets-table row, resolved into engine quantization.
 type MarketCfg struct {
 	// Market is the glossary/wire name; the storage column keeps the
-	// spec-#21 name `markets.symbol` (waiver: column name only).
+	// spec-#21 name `markets.symbol`.
+	// ADR-0009 waiver — `markets.symbol` keeps the legacy column name
+	// (spec #21); new identifiers use Market per GLOSSARY.
 	Market       string
 	BaseCoin     string
 	QuoteCoin    string

@@ -56,6 +56,8 @@ func WithinScale(d decimal.Decimal, scale int32) bool {
 }
 
 // Conforms reports whether d is a whole multiple of quantum (a Market's
+// tick size for prices, lot size for amounts — admission rejects
+// non-multiples per ADR-0009).
 func Conforms(d, quantum decimal.Decimal) bool {
 	if quantum.IsZero() {
 		return false

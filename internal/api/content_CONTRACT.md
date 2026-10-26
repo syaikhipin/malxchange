@@ -15,7 +15,7 @@ English-only v1 (ADR-0013: no `lang`, no `titleCN`/`titleEN`).
   In compose the admin service is reachable at `http://admin:8080`.
 - The paths carry the `/internal/content` prefix as SERVED (handlers on
   the admin service's internal mux register without the `/internal`
-  prefix, per the repo's StripPrefix convention — backend-infra §2).
+  prefix, per the boot harness's StripPrefix convention).
 - Transport: plain HTTP on the compose network; the network boundary
   is the auth (Caddy never proxies `/internal`).
 
