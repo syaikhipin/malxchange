@@ -28,7 +28,7 @@ type WalletEnv struct {
 	EvmFallbackURL string
 	TronEndpoint   string
 	TronAPIKey     string
-	ChainTLSSkip   bool   // self-signed node certs inside the compose network
+	ChainTLSSkip   bool   // opt-in skip for self-signed node certs ("true"); verification is the default (audit issue #85)
 	TronFundBuffer string // TRX kept on the hot wallet for fee burning
 }
 
@@ -55,7 +55,7 @@ func LoadWalletEnv() WalletEnv {
 			EvmFallbackURL: os.Getenv("MAL_EVM_RPC_FALLBACK_URL"),
 			TronEndpoint:   os.Getenv("MAL_TRON_ENDPOINT"),
 			TronAPIKey:     os.Getenv("MAL_TRON_API_KEY"),
-			ChainTLSSkip:   os.Getenv("MAL_CHAIN_TLS_SKIP_VERIFY") != "false",
+			ChainTLSSkip:   os.Getenv("MAL_CHAIN_TLS_SKIP_VERIFY") == "true",
 		}
 	})
 	return envVal

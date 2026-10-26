@@ -221,7 +221,7 @@ services:
       MAL_EVM_RPC_FALLBACK_URL: ${MAL_EVM_RPC_FALLBACK_URL:-}
       MAL_TRON_ENDPOINT: ${MAL_TRON_ENDPOINT:-}
       MAL_TRON_API_KEY: ${MAL_TRON_API_KEY:-}
-      MAL_CHAIN_TLS_SKIP_VERIFY: "true" # self-signed node certs inside compose
+      MAL_CHAIN_TLS_SKIP_VERIFY: ${MAL_CHAIN_TLS_SKIP_VERIFY:-true} # in-compose nodes serve self-signed certs; set false in .env for external nodes with real certificates (audit issue #85)
       MAL_WALLET_KEYSTORE: ${MAL_WALLET_KEYSTORE:-}
       MAL_HOT_KEYSTORE_PASSPHRASE: ${MAL_HOT_KEYSTORE_PASSPHRASE:-}
 
